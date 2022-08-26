@@ -11,6 +11,7 @@ credentials*
 *credentials*
 *.swp
 *deprecated/
+*.pth
 
 # C extensions
 *.so
