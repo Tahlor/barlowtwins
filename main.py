@@ -14,6 +14,7 @@ import signal
 import subprocess
 import sys
 import time
+from tqdm import tqdm
 
 from PIL import Image, ImageOps, ImageFilter
 from torch import nn, optim
@@ -49,7 +50,11 @@ parser.add_argument('--checkpoint-dir', default='./checkpoint/', type=Path,
 parser.add_argument('--checkpoint-dir-load', default='./models/', type=Path,
                     metavar='DIR', help='path to checkpoint directory to load from')
 
+## Only look at the top half and then crop
+SCALE = (.08,1)
+SCALE = (.25,1)
 
+PORT=63249 # 58472
 def main():
     args = parser.parse_args()
     args.ngpus_per_node = torch.cuda.device_count()
@@ -65,11 +70,11 @@ def main():
         host_name = stdout.decode().splitlines()[0]
         args.rank = int(os.getenv('SLURM_NODEID')) * args.ngpus_per_node
         args.world_size = int(os.getenv('SLURM_NNODES')) * args.ngpus_per_node
-        args.dist_url = f'tcp://{host_name}:58472'
+        args.dist_url = f'tcp://{host_name}:{PORT}'
     else:
         # single-node distributed training
         args.rank = 0
-        args.dist_url = 'tcp://localhost:58472'
+        args.dist_url = f'tcp://localhost:{PORT}'
         args.world_size = args.ngpus_per_node
     torch.multiprocessing.spawn(main_worker, (args,), args.ngpus_per_node)
 
@@ -120,7 +125,7 @@ def main_worker(gpu, args):
     else:
         start_epoch = 0
 
-    dataset = torchvision.datasets.ImageFolder(args.data / 'train', Transform())
+    dataset = torchvision.datasets.ImageFolder(args.data / 'train', Transform(),             is_valid_file=lambda path: path.endswith("j2k"))
     sampler = torch.utils.data.distributed.DistributedSampler(dataset)
     assert args.batch_size % args.world_size == 0
     per_device_batch_size = args.batch_size // args.world_size
@@ -132,7 +137,7 @@ def main_worker(gpu, args):
     scaler = torch.cuda.amp.GradScaler()
     for epoch in range(start_epoch, args.epochs):
         sampler.set_epoch(epoch)
-        for step, ((y1, y2), _) in enumerate(loader, start=epoch * len(loader)):
+        for step, ((y1, y2), _) in enumerate(tqdm(loader), start=epoch * len(loader)):
             y1 = y1.cuda(gpu, non_blocking=True)
             y2 = y2.cuda(gpu, non_blocking=True)
             adjust_learning_rate(args, optimizer, loader, step)
@@ -300,7 +305,7 @@ class Solarization(object):
 class Transform:
     def __init__(self):
         self.transform = transforms.Compose([
-            transforms.RandomResizedCrop(224, interpolation=Image.BICUBIC),
+            transforms.RandomResizedCrop(224, scale=SCALE, interpolation=Image.BICUBIC),
             #transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply(
                 [transforms.ColorJitter(brightness=0.4, contrast=0.4,
@@ -315,7 +320,7 @@ class Transform:
                                  std=[0.229, 0.224, 0.225])
         ])
         self.transform_prime = transforms.Compose([
-            transforms.RandomResizedCrop(224, interpolation=Image.BICUBIC),
+            transforms.RandomResizedCrop(224, scale=SCALE, interpolation=Image.BICUBIC),
             #transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply(
                 [transforms.ColorJitter(brightness=0.4, contrast=0.4,

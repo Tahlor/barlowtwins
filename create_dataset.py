@@ -11,6 +11,8 @@ import shutil
 ext = "j2k"
 
 PATH = Path("/home/taylor/anaconda3/FRENCH_CENSUS")
+PATH = Path("/mnt/ebs/FrenchCensus/")
+
 train_path = PATH / "train"
 val_path = PATH / "val"
 src_path = PATH / "images"

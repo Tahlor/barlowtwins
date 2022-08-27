@@ -48,15 +48,14 @@ parser.add_argument('--checkpoint-dir', default='./checkpoint/lincls/', type=Pat
                     metavar='DIR', help='path to checkpoint directory')
 
 
-torch.cuda.set_device(0)
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+#torch.cuda.set_device(0)
+#os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 def main():
     args = parser.parse_args()
     if args.train_percent in {1, 10}:
         args.train_files = urllib.request.urlopen(f'https://raw.githubusercontent.com/google-research/simclr/master/imagenet_subsets/{args.train_percent}percent.txt').readlines()
-    args.ngpus_per_node = 1
-    n = torch.cuda.device_count()
+    args.ngpus_per_node = torch.cuda.device_count()
     if 'SLURM_JOB_ID' in os.environ:
         signal.signal(signal.SIGUSR1, handle_sigusr1)
         signal.signal(signal.SIGTERM, handle_sigterm)
@@ -140,7 +139,9 @@ def main_worker(gpu, args):
             transforms.CenterCrop(224),
             transforms.ToTensor(),
             normalize,
-        ]))
+        ]),
+            is_valid_file=lambda path: path.endswith("j2k")
+)
 
     if args.train_percent in {1, 10}:
         train_dataset.samples = []

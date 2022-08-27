@@ -15,6 +15,7 @@ credentials*
 checkpoint/
 models/
 extensions/
+data/
 
 # C extensions
 *.so
