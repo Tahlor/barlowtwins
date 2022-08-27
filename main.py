@@ -24,6 +24,8 @@ import torchvision.transforms as transforms
 parser = argparse.ArgumentParser(description='Barlow Twins Training')
 parser.add_argument('data', type=Path, metavar='DIR',
                     help='path to dataset')
+parser.add_argument('--pretrained', type=Path, metavar='FILE',
+                    help='path to pretrained model')
 parser.add_argument('--workers', default=8, type=int, metavar='N',
                     help='number of data loader workers')
 parser.add_argument('--epochs', default=1000, type=int, metavar='N',
@@ -43,7 +45,9 @@ parser.add_argument('--projector', default='8192-8192-8192', type=str,
 parser.add_argument('--print-freq', default=100, type=int, metavar='N',
                     help='print frequency')
 parser.add_argument('--checkpoint-dir', default='./checkpoint/', type=Path,
-                    metavar='DIR', help='path to checkpoint directory')
+                    metavar='DIR', help='path to checkpoint directory to save from')
+parser.add_argument('--checkpoint-dir-load', default='./models/', type=Path,
+                    metavar='DIR', help='path to checkpoint directory to load from')
 
 
 def main():
@@ -86,6 +90,12 @@ def main_worker(gpu, args):
     torch.backends.cudnn.benchmark = True
 
     model = BarlowTwins(args).cuda(gpu)
+
+    # if args.pretrained:
+    #     state_dict = torch.load(args.pretrained, map_location='cpu')
+    #     missing_keys, unexpected_keys = model.load_state_dict(state_dict["model"], strict=False)
+
+
     model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     param_weights = []
     param_biases = []
@@ -101,7 +111,7 @@ def main_worker(gpu, args):
                      lars_adaptation_filter=True)
 
     # automatically resume from checkpoint if it exists
-    if (args.checkpoint_dir / 'checkpoint.pth').is_file():
+    if (args.checkpoint_dir_load / 'checkpoint.pth').is_file():
         ckpt = torch.load(args.checkpoint_dir / 'checkpoint.pth',
                           map_location='cpu')
         start_epoch = ckpt['epoch']

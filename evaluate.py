@@ -128,10 +128,13 @@ def main_worker(gpu, args):
 
     train_dataset = datasets.ImageFolder(traindir, transforms.Compose([
             transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
+            #transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
-        ]))
+        ]),
+            is_valid_file=lambda path: path.endswith("j2k")
+                                         )
+
     val_dataset = datasets.ImageFolder(valdir, transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),

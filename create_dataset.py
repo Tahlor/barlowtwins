@@ -8,17 +8,21 @@ import shutil
 
 
 # mogrify -format jpg *.j2k
-ext = "jpg"
+ext = "j2k"
 
-PATH = Path("/home/taylor/anaconda3/FRENCH_CENSUS/")
-files = list(Path(PATH).rglob(f"*.{ext}"))
+PATH = Path("/home/taylor/anaconda3/FRENCH_CENSUS")
+train_path = PATH / "train"
+val_path = PATH / "val"
+src_path = PATH / "images"
+
+files = list(src_path.rglob(f"*.{ext}"))
 validation_set_size = .1
 
 doc_types = ["unknown"]
 def lookup(file_name):
     return "unknown"
 
-for path in [PATH / "val", PATH / "train"]:
+for path in [val_path, train_path]:
     if path.exists():
        shutil.rmtree(path)
        time.sleep(2)
@@ -27,9 +31,9 @@ for path in [PATH / "val", PATH / "train"]:
 
 random.shuffle(files)
 
-path = PATH / "val"
-for i, f in enumerate(files):
+path = val_path
+for i, f in enumerate(tqdm(files)):
     if i > len(files) * validation_set_size:
-        path = PATH / "train"
-    print(f)
+        path = train_path
+    #print(f)
     os.system(f"ln -s {str(f)} {str(path/ lookup(f.name) / f.name)}")
